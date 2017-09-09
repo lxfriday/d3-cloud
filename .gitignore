@@ -1,2 +1,5 @@
-node_modules
+node_modules/
 npm-debug.log
+testd3.js
+package-lock.json
+src/build/

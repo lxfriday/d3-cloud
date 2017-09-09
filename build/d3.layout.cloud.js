@@ -2,11 +2,13 @@
 // Word cloud layout by Jason Davies, https://www.jasondavies.com/wordcloud/
 // Algorithm due to Jonathan Feinberg, http://static.mrfeinberg.com/bv_ch03.pdf
 
+// 链式调用的方法，在外部添加定义了之后，将不再调用内部的方法
+
 var dispatch = require("d3-dispatch").dispatch;
 
 var cloudRadians = Math.PI / 180,
-    cw = 1 << 11 >> 5,
-    ch = 1 << 11;
+    cw = 1 << 11 >> 5, // 64
+    ch = 1 << 11; // 2048
 
 module.exports = function() {
   var size = [256, 256],
@@ -32,9 +34,9 @@ module.exports = function() {
 
   cloud.start = function() {
     var contextAndRatio = getContext(canvas()),
-        board = zeroArray((size[0] >> 5) * size[1]),
+        board = zeroArray((size[0] >> 5) * size[1]), // 宽 / 32 * 高
         bounds = null,
-        n = words.length,
+        n = words.length, // 词条数
         i = -1,
         tags = [],
         data = words.map(function(d, i) {
@@ -46,7 +48,7 @@ module.exports = function() {
           d.size = ~~fontSize.call(this, d, i);
           d.padding = padding.call(this, d, i);
           return d;
-        }).sort(function(a, b) { return b.size - a.size; });
+        }).sort(function(a, b) { return b.size - a.size; }); // 按照字体大小，从大到小排
 
     if (timer) clearInterval(timer);
     timer = setInterval(step, 0);
@@ -56,11 +58,17 @@ module.exports = function() {
 
     function step() {
       var start = Date.now();
+      // n 是词条数组的长度，这里便利词条数组
       while (Date.now() - start < timeInterval && ++i < n && timer) {
         var d = data[i];
-        d.x = (size[0] * (random() + .5)) >> 1;
-        d.y = (size[1] * (random() + .5)) >> 1;
+        d.x = (size[0] * (random() + .5)) >> 1; // (宽度 * [0.5, 1.5)) / 2
+        d.y = (size[1] * (random() + .5)) >> 1; // (高度 * [0.5, 1.5)) / 2
+
+
+        // ------------------------------------------------------------------
         cloudSprite(contextAndRatio, d, data, i);
+        // ------------------------------------------------------------------
+
         if (d.hasText && place(board, d, bounds)) {
           tags.push(d);
           event.call("word", cloud, d);
@@ -86,6 +94,11 @@ module.exports = function() {
     return cloud;
   };
 
+  /**
+   *
+   * @param canvas
+   * @return {{context: ({context, ratio}|*|CanvasRenderingContext2D|WebGLRenderingContext), ratio: number}}
+   */
   function getContext(canvas) {
     canvas.width = canvas.height = 1;
     var ratio = Math.sqrt(canvas.getContext("2d").getImageData(0, 0, 1, 1).data.length >> 2);
@@ -99,13 +112,14 @@ module.exports = function() {
     return {context: context, ratio: ratio};
   }
 
+  // 放置
   function place(board, tag, bounds) {
     var perimeter = [{x: 0, y: 0}, {x: size[0], y: size[1]}],
         startX = tag.x,
         startY = tag.y,
-        maxDelta = Math.sqrt(size[0] * size[0] + size[1] * size[1]),
+        maxDelta = Math.sqrt(size[0] * size[0] + size[1] * size[1]), // 对角线长度
         s = spiral(size),
-        dt = random() < .5 ? 1 : -1,
+        dt = random() < .5 ? 1 : -1, // dt 为 1或 -1
         t = -dt,
         dxdy,
         dx,
@@ -120,8 +134,8 @@ module.exports = function() {
       tag.x = startX + dx;
       tag.y = startY + dy;
 
-      if (tag.x + tag.x0 < 0 || tag.y + tag.y0 < 0 ||
-          tag.x + tag.x1 > size[0] || tag.y + tag.y1 > size[1]) continue;
+      if (tag.x + tag.x0 < 0 || tag.y + tag.y0 < 0 || tag.x + tag.x1 > size[0] || tag.y + tag.y1 > size[1]) continue;
+
       // TODO only check for collisions within current bounds.
       if (!bounds || !cloudCollide(tag, board, size[0])) {
         if (!bounds || collideRects(tag, bounds)) {
@@ -149,6 +163,7 @@ module.exports = function() {
     return false;
   }
 
+  // 下面的方法，都是传入参数设置，没有参数则是获取
   cloud.timeInterval = function(_) {
     return arguments.length ? (timeInterval = _ == null ? Infinity : _, cloud) : timeInterval;
   };
@@ -205,37 +220,71 @@ module.exports = function() {
   return cloud;
 };
 
+/**
+ * return d.text
+ * @param d
+ * @return {*}
+ */
 function cloudText(d) {
   return d.text;
 }
 
+/**
+ * return font family
+ * @return {string}
+ */
 function cloudFont() {
+  console.log('font');
   return "serif";
 }
 
+/**
+ * return font weight
+ * @return {string}
+ */
 function cloudFontNormal() {
   return "normal";
 }
 
+/**
+ * return font size, d.vale
+ * @param d
+ * @return {number}
+ */
 function cloudFontSize(d) {
   return Math.sqrt(d.value);
 }
 
+/**
+ * return a random int number
+ * @return {number}
+ */
 function cloudRotate() {
+  // -90, -60, -30, 0, 30, 60
   return (~~(Math.random() * 6) - 3) * 30;
 }
 
+/**
+ * return a padding value
+ * @return {number}
+ */
 function cloudPadding() {
   return 1;
 }
 
-// Fetches a monochrome sprite bitmap for the specified text.
-// Load in batches for speed.
+/**
+ * Fetches a monochrome sprite bitmap for the specified text. Load in batches for speed.
+ * @param contextAndRatio
+ * @param d
+ * @param data
+ * @param di {number} data index
+ */
 function cloudSprite(contextAndRatio, d, data, di) {
   if (d.sprite) return;
   var c = contextAndRatio.context,
       ratio = contextAndRatio.ratio;
 
+  // 64 / 5, 2048
   c.clearRect(0, 0, (cw << 5) / ratio, ch / ratio);
   var x = 0,
       y = 0,
@@ -245,11 +294,16 @@ function cloudSprite(contextAndRatio, d, data, di) {
   while (++di < n) {
     d = data[di];
     c.save();
+    // fontStyle, fontWeight, fontSize, fontFamily
+    // normal normal ${size} px serif
     c.font = d.style + " " + d.weight + " " + ~~((d.size + 1) / ratio) + "px " + d.font;
-    var w = c.measureText(d.text + "m").width * ratio,
-        h = d.size << 1;
+    // w 要显示的字的宽度
+    // h 要显示的字的高度(实际是字体高度的2倍)
+
+    var w = c.measureText(d.text + "m").width * ratio,  // 测量字段的宽度
+        h = d.size << 1; // 高度是字体大小的2倍, 左移1即是乘以2
     if (d.rotate) {
-      var sr = Math.sin(d.rotate * cloudRadians),
+      var sr = Math.sin(d.rotate * cloudRadians), // cloudRadians = Math.PI / 180, rotate是指旋转的角度，直接指向的角度
           cr = Math.cos(d.rotate * cloudRadians),
           wcr = w * cr,
           wsr = w * sr,
@@ -319,6 +373,7 @@ function cloudSprite(contextAndRatio, d, data, di) {
 }
 
 // Use mask-based collision detection.
+// --------------------------------------------------
 function cloudCollide(tag, board, sw) {
   sw >>= 5;
   var sprite = tag.sprite,
@@ -339,6 +394,7 @@ function cloudCollide(tag, board, sw) {
   }
   return false;
 }
+// --------------------------------------------------
 
 function cloudBounds(bounds, d) {
   var b0 = bounds[0],
@@ -353,6 +409,7 @@ function collideRects(a, b) {
   return a.x + a.x1 > b[0].x && a.x + a.x0 < b[1].x && a.y + a.y1 > b[0].y && a.y + a.y0 < b[1].y;
 }
 
+// 阿基米德螺旋线
 function archimedeanSpiral(size) {
   var e = size[0] / size[1];
   return function(t) {
@@ -360,6 +417,7 @@ function archimedeanSpiral(size) {
   };
 }
 
+// 矩形螺旋线
 function rectangularSpiral(size) {
   var dy = 4,
       dx = dy * size[0] / size[1],
@@ -378,7 +436,11 @@ function rectangularSpiral(size) {
   };
 }
 
-// TODO reuse arrays?
+/**
+ * 返回0的数组，n为0的个数
+ * @param n {number} 0的个数
+ * @return {Array}
+ */
 function zeroArray(n) {
   var a = [],
       i = -1;
@@ -386,25 +448,35 @@ function zeroArray(n) {
   return a;
 }
 
+/**
+ * return a canvas HTMLElement
+ * @return {Element}
+ */
 function cloudCanvas() {
   return document.createElement("canvas");
 }
 
+/**
+ * function creator
+ * @param d
+ * @return {Function} if d is a function return it or return a function that return d
+ */
 function functor(d) {
   return typeof d === "function" ? d : function() { return d; };
 }
 
+// two kinds of spiral
 var spirals = {
   archimedean: archimedeanSpiral,
   rectangular: rectangularSpiral
 };
 
 },{"d3-dispatch":2}],2:[function(require,module,exports){
-// https://d3js.org/d3-dispatch/ Version 1.0.2. Copyright 2016 Mike Bostock.
+// https://d3js.org/d3-dispatch/ Version 1.0.3. Copyright 2017 Mike Bostock.
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-  typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (factory((global.d3 = global.d3 || {})));
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+	typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	(factory((global.d3 = global.d3 || {})));
 }(this, (function (exports) { 'use strict';
 
 var noop = {value: function() {}};

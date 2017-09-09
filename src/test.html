@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script src="./d3.min.js"></script>
+    <script src="../build/d3.layout.cloud.js"></script>
+    <!--<script src="../build/d3.layout.cloud.js"></script>-->
+    <script>
+      var fill = d3.scale.category20();
+      // 输出20种类别的颜色 ---颜色比例尺
+
+      // word cloud layout  词云布局，d3布局中为词云设立的单独的一种布局方式
+      // d3.layout.cloud() 构造一个词云的布局实例
+      // on(type,listener) 注册特定的listener来接收布局中特定类型的event。
+      // 目前只有 word和end这两种event是被支持的。
+      // word这种event在该布局完成对每一个word的布局时被调度。
+      // end这种活动在该布局完成对所有的words的布局时被调度。
+      // 注册的listener通过两个参数被调度：
+      // 被成功布局的单词数组
+      // 以[{x0,y0},{x1,y1}]形式为界限，代表words范围    a bounds object of the form [{x0, y0}, {x1, y1}] representing the extent of the placed objects.
+
+      // start 布局算法 初始化单词数组上的各种参数，并且从最大的单词开始布局单词
+
+      // 从矩形区域的中间开始，每一个单词在布局时都要检测是否与先前已经布局好的单词位置冲突。
+
+      // 一旦检测到冲突，该算法会沿着螺旋线重新布局该单词。
+
+      // 如果一个单词不能在沿着螺旋线的任何地方被布局，该单词最终将不会显示在词云图上，该问题可能在后续版本中被解决。
+
+      // stop() 停止布局算法
+
+      // timeInterval([time])   布局时通过setInterval来避免浏览器的event loop被锁住。
+
+      // words([words array].map(function(d)(return{text:d;size:某一个数值}))
+
+      // 为words数组中的每一个word分配一个字体大小
+//      var words = [".NET", "Silverlight", "jQuery", "CSS3", "HTML5", "JavaScript", "SQL","C#"];
+//      // 里面的所有操作全部是对实例的属性的更改，实例在开始是具备初始化属性的
+//      d3.layout.cloud().size([400, 200]) // size([x,y])  词云显示的大小
+//        //map 返回新的object数组
+//        .words(words.map(function(d) {
+//          var result = {"text": d, "size": 10 + Math.random() * 50};
+//          return result;
+//        }))
+//        //~~的作用是单纯的去掉小数部分，不论正负都不会改变整数部分
+//        //这里的作用是产生0 1
+//        .rotate(function() { return ~~(Math.random() * 2) * 60; }) // 自己定制rotate的方式
+//        .font("Impact") // 自己提供了font family
+//        .fontSize(function(d) { return d.size; }) // 自己定制fontSize
+//        .on("end", draw)//结束时运行draw函数
+//        .start();
+
+      // append()使用函数在指定元素的结尾添加内容
+      // transform:translate(x,y)  定义2d平移，即平移，向右平移x,向下平移y
+      function draw(words) {
+        d3.select("body").append("svg")
+          .attr("width", 1000)
+          .attr("height", 600)
+          .attr("style","border:1px solid red")
+          .append("g")
+          .attr("transform", "translate(400,200)")
+          .selectAll("text")
+          .data(words)
+          .enter()
+          .append("text")
+          .style("border","1px solid blue")
+          .style("font-size", function(d) { return d.size + "px"; })
+          .style("font-family", "Impact")
+          .style("fill", function(d, i) { return fill(i); }) //fill 在前面15行定义为颜色集
+          .attr("text-anchor", "middle")
+          .attr("transform", function(d) {
+            return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+          })
+          .text(function(d) { return d.text; });
+      }
+
+      var jsonString = '[{"text":"JavaScript","size":56,"font":"Impact","style":"normal","weight":"normal","rotate":0,"padding":1,"x":-56,"y":-8,"width":288,"height":112,"xoff":0,"yoff":0,"x1":144,"y1":55,"x0":-144,"y0":-47,"hasText":true},{"text":"HTML5","size":43,"font":"Impact","style":"normal","weight":"normal","rotate":0,"padding":1,"width":160,"height":86,"xoff":480,"yoff":0,"x1":80,"y1":42,"x0":-80,"y0":-36,"hasText":true,"x":113,"y":-56},{"text":"C#","size":36,"font":"Impact","style":"normal","weight":"normal","rotate":0,"padding":1,"width":96,"height":72,"xoff":640,"yoff":0,"x1":48,"y1":35,"x0":-48,"y0":-31,"hasText":true,"x":121,"y":0},{"text":".NET","size":34,"font":"Impact","style":"normal","weight":"normal","rotate":60,"padding":1,"width":128,"height":105,"xoff":736,"yoff":0,"x1":64,"y1":51,"x0":-64,"y0":-33,"hasText":true,"x":-20,"y":27},{"text":"SQL","size":29,"font":"Impact","style":"normal","weight":"normal","rotate":0,"padding":1,"width":96,"height":58,"xoff":864,"yoff":0,"x1":48,"y1":28,"x0":-48,"y0":-26,"hasText":true,"x":-31,"y":-59},{"text":"Silverlight","size":20,"font":"Impact","style":"normal","weight":"normal","rotate":60,"padding":1,"width":96,"height":111,"xoff":960,"yoff":0,"x1":48,"y1":54,"x0":-48,"y0":-47,"hasText":true,"x":-41,"y":46},{"text":"CSS3","size":19,"font":"Impact","style":"normal","weight":"normal","rotate":0,"padding":1,"width":64,"height":38,"xoff":1056,"yoff":0,"x1":32,"y1":18,"x0":-32,"y0":-18,"hasText":true,"x":123,"y":-34}]';
+      draw(JSON.parse(jsonString))
+
+    </script>
+</body>
+</html>

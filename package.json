@@ -21,10 +21,15 @@
   },
   "main": "index.js",
   "scripts": {
-    "build": "mkdir -p build && browserify --standalone d3.layout.cloud index.js > build/d3.layout.cloud.js"
+    "watch": "node watcher.js",
+    "build": "browserify --standalone d3.layout.cloud index.js > build/d3.layout.cloud.js"
   },
   "dependencies": {
-    "d3-dispatch": "1"
+    "chokidar": "^1.7.0",
+    "d3": "^4.10.0",
+    "d3-dispatch": "1",
+    "d3-selection": "^1.1.0",
+    "shelljs": "^0.7.8"
   },
   "devDependencies": {
     "browserify": "^11.2.0"
